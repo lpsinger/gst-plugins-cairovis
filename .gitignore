@@ -5,7 +5,12 @@ config.*
 configure
 libtool
 INSTALL
+Makefile
 Makefile.in
+.deps/
+.libs/
+*.la
+*.lo
 depcomp
 install-sh
 ltmain.sh
