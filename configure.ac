@@ -9,7 +9,7 @@ GST_REQUIRED=0.10.16
 GSTPB_REQUIRED=0.10.16
 
 AC_CONFIG_SRCDIR([gst/cairovis/gstplugin.c])
-AC_CONFIG_HEADERS([config.h])
+dnl AC_CONFIG_HEADERS([config.h])
 
 dnl required version of automake
 AM_INIT_AUTOMAKE([1.10])
@@ -46,6 +46,7 @@ PKG_CHECK_MODULES(GST, [
   gstreamer-0.10 >= $GST_REQUIRED
   gstreamer-base-0.10 >= $GST_REQUIRED
   gstreamer-controller-0.10 >= $GST_REQUIRED
+  gstreamer-video-0.10 >= $GST_REQUIRED
 ], [
   AC_SUBST(GST_CFLAGS)
   AC_SUBST(GST_LIBS)
@@ -58,6 +59,18 @@ PKG_CHECK_MODULES(GST, [
       or similar. The minimum version required is $GST_REQUIRED.
   ])
 ])
+
+dnl Check for GSL
+PKG_CHECK_MODULES([GSL], [gsl], [
+  AC_SUBST(GSL_CFLAGS)
+  AC_SUBST(GSL_LIBS)
+], [AC_MSG_ERROR([Not found!])])
+
+dnl Check for Cairo
+PKG_CHECK_MODULES([CAIRO], [cairo], [
+  AC_SUBST(CAIRO_CFLAGS)
+  AC_SUBST(CAIRO_LIBS)
+], [AC_MSG_ERROR([Not found!])])
 
 dnl check if compiler understands -Wall (if yes, add -Wall to GST_CFLAGS)
 AC_MSG_CHECKING([to see if compiler understands -Wall])
