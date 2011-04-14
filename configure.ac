@@ -8,7 +8,7 @@ dnl required versions of gstreamer and plugins-base
 GST_REQUIRED=0.10.16
 GSTPB_REQUIRED=0.10.16
 
-AC_CONFIG_SRCDIR([gst/cairovis/gstplugin.c])
+AC_CONFIG_SRCDIR([gst/cairovis/cairovis.c])
 dnl AC_CONFIG_HEADERS([config.h])
 
 dnl required version of automake
