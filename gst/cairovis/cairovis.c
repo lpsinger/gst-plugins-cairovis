@@ -63,7 +63,6 @@ plugin_init (GstPlugin * plugin)
     GType type;
   } *element, elements[] = {
     {
-    "cairovis_base", CAIROVIS_BASE_TYPE}, {
     "cairovis_histogram", CAIROVIS_HISTOGRAM_TYPE}, {
     "cairovis_lineseries", CAIROVIS_LINESERIES_TYPE}, {
     "cairovis_waterfall", CAIROVIS_WATERFALL_TYPE}, {
