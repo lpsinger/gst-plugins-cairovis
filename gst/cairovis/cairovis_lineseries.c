@@ -21,6 +21,10 @@
 
 #include <math.h>
 
+#if defined(_MSC_VER)
+__inline const int isfinite( double n) { return n != HUGE_VAL; }
+#define INFINITY G_MAXDOUBLE
+#endif /* _MSC_VER */
 
 static gboolean
 sink_setcaps (GstPad * pad, GstCaps * caps)
@@ -47,6 +51,14 @@ chain (GstPad * pad, GstBuffer * inbuf)
   cairo_surface_t *surf;
   cairo_t *cr;
 
+  /* Determine number of samples, data pointer */
+  const double *data = (const double *) GST_BUFFER_DATA (inbuf);
+  gulong nsamples = GST_BUFFER_SIZE (inbuf) / sizeof (double);
+  gint nchannels = element->nchannels;
+  gulong nsamples_per_channel = nsamples / nchannels;
+  gulong i;
+  gint channel;
+
   gboolean xlog = base->xscale;
   gboolean ylog = base->yscale;
 
@@ -58,14 +70,6 @@ chain (GstPad * pad, GstBuffer * inbuf)
     goto done;
 
   cr = cairo_create (surf);
-
-  /* Determine number of samples, data pointer */
-  const double *data = (const double *) GST_BUFFER_DATA (inbuf);
-  gulong nsamples = GST_BUFFER_SIZE (inbuf) / sizeof (double);
-  gint nchannels = element->nchannels;
-  gulong nsamples_per_channel = nsamples / nchannels;
-  gulong i;
-  gint channel;
 
   /* Determine x-axis limits */
   if (base->xautoscale) {
@@ -96,12 +100,13 @@ chain (GstPad * pad, GstBuffer * inbuf)
     gboolean was_finite = FALSE;
 
     for (i = 0; i < nsamples; i++) {
+      gboolean is_finite;
       double x = i, y = data[i * nchannels + channel];
       if (xlog)
         x = log10 (x);
       if (ylog)
         y = log10 (y);
-      gboolean is_finite = isfinite (x) && isfinite (y);
+      is_finite = isfinite (x) && isfinite (y);
       if (!was_finite && is_finite)
         cairo_move_to (cr, x, y);
       else if (is_finite)
@@ -219,11 +224,16 @@ cairovis_lineseries_get_type (void)
 
   if (!type) {
     static const GTypeInfo info = {
-      .class_size = sizeof (CairoVisLineSeriesClass),
-      .class_init = class_init,
-      .base_init = base_init,
-      .instance_size = sizeof (CairoVisLineSeries),
-      .instance_init = instance_init,
+      sizeof (CairoVisLineSeriesClass),
+      base_init,
+      NULL,
+      class_init,
+      NULL,
+      NULL,
+      sizeof (CairoVisLineSeries),
+      0,
+      instance_init,
+      NULL
     };
     type =
         g_type_register_static (CAIROVIS_BASE_TYPE, "cairovis_lineseries",

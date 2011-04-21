@@ -21,6 +21,12 @@
 
 #include <math.h>
 
+#if defined(_MSC_VER)
+__inline const double log2( double n ) { return log( n ) / log( 2 ); }
+__inline const int isfinite( double n) { return n != HUGE_VAL; }
+#define INFINITY G_MAXDOUBLE
+#endif /* _MSC_VER */
+
 
 GType
 cairovis_histogram_bins_get_type (void)
@@ -55,7 +61,7 @@ increment_bin (CairoVisHistogram * element, double x, gchar value)
   element->total += value;
 
   if (isfinite (x) && x >= 0 && x < element->nbins)
-    element->bin_counts[(uint) floor (x)] += value;
+    element->bin_counts[(guint) floor (x)] += value;
 }
 
 
@@ -93,6 +99,10 @@ chain (GstPad * pad, GstBuffer * inbuf)
   double *bin_heights, *bin_edges;
   guint i;
   double last_x;
+  guint available_bytes;
+  guint history_bytes;
+  gboolean xlog;
+  gboolean ylog;
 
   if (!element->bin_counts) {
     guint available_bytes = gst_adapter_available (element->adapter);
@@ -113,8 +123,8 @@ chain (GstPad * pad, GstBuffer * inbuf)
   gst_adapter_push (element->adapter, inbuf);
 
   /* Remove oldest data from histogram */
-  guint available_bytes = gst_adapter_available (element->adapter);
-  guint history_bytes = element->history * sizeof (double);
+  available_bytes = gst_adapter_available (element->adapter);
+  history_bytes = element->history * sizeof (double);
   if (available_bytes > history_bytes) {
     GstBuffer *buf =
         gst_adapter_take_buffer (element->adapter,
@@ -123,8 +133,8 @@ chain (GstPad * pad, GstBuffer * inbuf)
     gst_buffer_unref (buf);
   }
 
-  gboolean xlog = base->xscale;
-  gboolean ylog = base->yscale;
+  xlog = base->xscale;
+  ylog = base->yscale;
 
   result =
       cairovis_base_buffer_surface_alloc (base, &outbuf, &surf, &width,
@@ -461,11 +471,16 @@ cairovis_histogram_get_type (void)
 
   if (!type) {
     static const GTypeInfo info = {
-      .class_size = sizeof (CairoVisHistogramClass),
-      .class_init = class_init,
-      .base_init = base_init,
-      .instance_size = sizeof (CairoVisHistogram),
-      .instance_init = instance_init,
+      sizeof (CairoVisHistogramClass),
+      base_init,
+      NULL,
+      class_init,
+      NULL,
+      NULL,
+      sizeof (CairoVisHistogram),
+      0,
+      instance_init,
+      NULL
     };
     type =
         g_type_register_static (CAIROVIS_BASE_TYPE, "cairovis_histogram", &info,
