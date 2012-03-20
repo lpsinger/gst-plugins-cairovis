@@ -52,10 +52,11 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
   GstFlowReturn result = GST_FLOW_ERROR;
   GstBuffer *outbuf;
   gint width, height;
+  gint axes_width, axes_height;
   cairo_surface_t *surf;
   cairo_t *cr;
   double *data;
-  guint i;
+  guint i, j;
   gboolean zlog = (element->zscale == CAIROVIS_SCALE_LOG);
   gdouble zmin, zmax;
 
@@ -159,6 +160,16 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
     if (G_UNLIKELY (result != GST_FLOW_OK))
       goto done;
 
+    /* Make space for colorbar if necessary */
+    if (element->colorbar)
+    {
+      axes_width = width - 72;
+      axes_height = height;
+    } else {
+      axes_width = width;
+      axes_height = height;
+    }
+
     cr = cairo_create (surf);
 
     /* Copy buffer flags and timestamps */
@@ -217,7 +228,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
       }
     }
 
-    cairovis_draw_axes (base, cr, width, height);
+    cairovis_draw_axes (base, cr, axes_width, axes_height);
 
     cairo_save (cr);
     cairo_identity_matrix (cr);
@@ -253,7 +264,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
     g_free (secs_str);
     cairo_text_extents_t extents;
     cairo_text_extents (cr, ts_str, &extents);
-    cairo_move_to (cr, width - extents.width - 36, height - 18);
+    cairo_move_to (cr, axes_width - extents.width - 36, axes_height - 18);
     cairo_show_text (cr, ts_str);
     g_free (ts_str);
     cairo_restore (cr);
@@ -285,6 +296,57 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
       cairo_paint (cr);
       cairo_surface_destroy (pixsurf);
       g_free (pixdata);
+
+      /* Draw colorbar if necessary */
+      if (element->colorbar)
+      {
+        GST_INFO_OBJECT (element, "painting colorbar");
+
+        /* Determine device space coordinates of axes corners */
+        double axes_left = -1., axes_right = 1., axes_bottom = -1., axes_top = 1.;
+        cairo_user_to_device (cr, &axes_left, &axes_bottom);
+        cairo_user_to_device (cr, &axes_right, &axes_top);
+
+        int colorbar_width = 16, colorbar_height = lrint(axes_bottom - axes_top);
+        pixdata = g_malloc (colorbar_width * colorbar_height * sizeof (guint32));
+        for (i = 0; i < colorbar_height; i++) {
+          double x = colormap_map (element->map, (double) i / colorbar_height);
+          for (j = 0; j < colorbar_width; j ++)
+            pixdata[i * colorbar_width + j] = x;
+        }
+        pixsurf = cairo_image_surface_create_for_data ((unsigned char *) pixdata, CAIRO_FORMAT_RGB24, colorbar_width, colorbar_height, cairo_format_stride_for_width (CAIRO_FORMAT_RGB24, colorbar_width));
+        struct cairovis_axis_spec zspec = {element->zscale, CAIROVIS_WEST, colorbar_height, zmin, zmax};
+        cairo_identity_matrix (cr);
+        cairo_reset_clip (cr);
+        cairo_set_source_rgb (cr, 1, 1, 1);
+        cairo_translate (cr, axes_width, 0.5 * (height + axes_bottom - axes_top));
+        cairovis_draw_axis (cr, &zspec);
+        cairo_scale (cr, 1., -1.);
+        cairo_rectangle (cr, 0., 0., colorbar_width, colorbar_height);
+        cairo_clip (cr);
+        cairo_set_source_surface (cr, pixsurf, 0, 0);
+        cairo_paint (cr);
+        cairo_surface_destroy (pixsurf);
+        cairo_reset_clip (cr);
+        cairo_set_source_rgb (cr, 1, 1, 1);
+        cairo_rectangle (cr, 0., 0., colorbar_width, colorbar_height);
+        cairo_stroke (cr);
+        g_free (pixdata);
+
+        /* Draw colorbar label if necessary */
+        if (element->zlabel)
+        {
+          cairo_font_extents_t font_extents;
+          cairo_text_extents_t text_extents;
+          cairo_set_font_size (cr, 12.0);
+          cairo_font_extents (cr, &font_extents);
+          cairo_text_extents (cr, element->zlabel, &text_extents);
+          cairo_scale (cr, 1., -1.);
+          cairo_move_to (cr, 1.5 * font_extents.ascent + colorbar_width, -0.5 * (colorbar_height - text_extents.width));
+          cairo_rotate (cr, -M_PI_2);
+          cairo_show_text (cr, element->zlabel);
+        }
+      }
     }
 
     if (zlog)
@@ -326,6 +388,7 @@ enum property
   PROP_ZMAX,
   PROP_HISTORY,
   PROP_COLORMAP,
+  PROP_COLORBAR,
 };
 
 
@@ -369,6 +432,8 @@ set_property (GObject * object, enum property id, const GValue * value,
       }
     }
       break;
+    case PROP_COLORBAR:
+      element->colorbar = g_value_get_boolean (value);
   }
 
   GST_OBJECT_UNLOCK (element);
@@ -404,6 +469,9 @@ get_property (GObject * object, enum property id, GValue * value,
       break;
     case PROP_COLORMAP:
       g_value_set_enum (value, element->map_name);
+      break;
+    case PROP_COLORBAR:
+      g_value_set_boolean (value, element->colorbar);
       break;
   }
 
@@ -518,6 +586,13 @@ class_init (gpointer class, gpointer class_data)
           CAIROVIS_COLORMAP_jet,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT)
       );
+  g_object_class_install_property (gobject_class,
+      PROP_COLORBAR,
+      g_param_spec_boolean ("colorbar",
+          "Colorbar",
+          "Set to true to make colorbar visible",
+          FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT)
+      );
 }
 
 
@@ -541,6 +616,7 @@ instance_init (GTypeInstance * object, gpointer class)
   element->offset0 = GST_BUFFER_OFFSET_NONE;
   element->last_offset_end = GST_BUFFER_OFFSET_NONE;
   element->map = NULL;
+  element->colorbar = FALSE;
 
   element->zlabel = NULL;
 }
