@@ -21,6 +21,12 @@
 
 #include <gst/video/video.h>
 
+#if defined(_MSC_VER)
+__inline const int rint(float x){
+  return (int)(x+0.5);
+}
+#define _USE_MATH_DEFINES
+#endif /* _MSC_VER */
 #include <math.h>
 
 
@@ -71,7 +77,7 @@ static void draw_minor_tick (cairo_t *cr, double x)
 }
 
 
-void cairovis_draw_axis (cairo_t *restrict cr, const struct cairovis_axis_spec *restrict axis)
+void cairovis_draw_axis (cairo_t * cr, const cairovis_axis_spec * axis)
 {
   cairo_text_extents_t extents;
   int ntick, nmintick, nmaxtick, nsubtick;
@@ -326,6 +332,9 @@ void cairovis_draw_axes (CairoVisBase *element, cairo_t *cr, gint width, gint he
   cairo_text_extents_t text_extents;
   double padding, padded_width, padded_height;
 
+  cairovis_axis_spec xspec;
+  cairovis_axis_spec yspec;
+
   gboolean xlog = (element->xscale == CAIROVIS_SCALE_LOG);
   gboolean ylog = (element->yscale == CAIROVIS_SCALE_LOG);
 
@@ -389,8 +398,16 @@ void cairovis_draw_axes (CairoVisBase *element, cairo_t *cr, gint width, gint he
   cairo_translate (cr, padding, height - padding);
 
   /* Render x-axis tick marks */
-  struct cairovis_axis_spec xspec = {element->xscale, CAIROVIS_SOUTH, padded_width, xmin, xmax};
-  struct cairovis_axis_spec yspec = {element->yscale, CAIROVIS_WEST, padded_height, ymin, ymax};
+  xspec.scale = element->xscale;
+  xspec.which_side = CAIROVIS_SOUTH;
+  xspec.device_max = padded_width;
+  xspec.data_min = xmin;
+  xspec.data_max = xmax;
+  yspec.scale = element->xscale;
+  yspec.which_side = CAIROVIS_WEST;
+  yspec.device_max = padded_height;
+  yspec.data_min = ymin;
+  yspec.data_max = ymax;
   cairovis_draw_axis(cr, &xspec);
   cairovis_draw_axis(cr, &yspec);
 
@@ -700,11 +717,15 @@ GType cairovis_base_get_type(void)
 
   if (!type) {
     static const GTypeInfo info = {
-      .class_size = sizeof (CairoVisBaseClass),
-      .class_init = class_init,
-      .base_init = base_init,
-      .instance_size = sizeof (CairoVisBase),
-      .instance_init = instance_init,
+      sizeof (CairoVisBaseClass),
+      base_init,
+      NULL,
+      class_init,
+      NULL,
+      NULL,
+      sizeof (CairoVisBase),
+      NULL,
+      instance_init
     };
     type = g_type_register_static (GST_TYPE_ELEMENT, "cairovis_base", &info, 0);
   }

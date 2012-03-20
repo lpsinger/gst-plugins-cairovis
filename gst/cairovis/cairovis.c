@@ -44,6 +44,9 @@
 #include <cairovis_lineseries.h>
 #include <cairovis_waterfall.h>
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 /*
  * ============================================================================

@@ -21,6 +21,11 @@
 
 #include <gst/video/video.h>
 
+#if defined(_MSC_VER)
+#define _USE_MATH_DEFINES
+#define INFINITY G_MAXDOUBLE
+#endif /* _MSC_VER */
+
 #include <math.h>
 
 
@@ -59,6 +64,11 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
   guint i, j;
   gboolean zlog = (element->zscale == CAIROVIS_SCALE_LOG);
   gdouble zmin, zmax;
+  guint available_bytes;
+  guint stride_bytes;
+  guint available_samples;
+  gint fpsn, fpsd;
+  guint64 history_samples;
 
   if (base->xscale || base->yscale) {
     gst_buffer_unref (inbuf);
@@ -90,17 +100,27 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
     goto done;
   }
 
-  guint available_bytes = gst_adapter_available (element->adapter);
-  guint stride_bytes = sizeof (double) * element->nchannels;
-  guint available_samples = available_bytes / stride_bytes;
-  gint fpsn, fpsd;
+  available_bytes = gst_adapter_available (element->adapter);
+  stride_bytes = sizeof (double) * element->nchannels;
+  available_samples = available_bytes / stride_bytes;
   gst_video_parse_caps_framerate (GST_PAD_CAPS (base->srcpad), &fpsn, &fpsd);
-  guint64 history_samples =
+  history_samples =
       gst_util_uint64_scale_int_round (element->history, element->rate,
       GST_SECOND);
 
   /* FIXME: This doesn't really have to be an infinite loop. */
   while (TRUE) {
+    guint64 desired_offset;
+    guint64 desired_offset_end;
+    guint64 desired_samples;
+    guint64 desired_bytes;
+    guint npixels;
+    gchar *nanos_str;
+    gchar *secs_str;
+    GstClockTime ts;
+    cairo_text_extents_t extents;
+    gchar *ts_str;
+
     GST_INFO_OBJECT (element,
         "checking to see if we have enough data to draw frame %"
         G_GUINT64_FORMAT, element->frame_number);
@@ -108,28 +128,29 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
         fpsd);
 
     /* FIXME: check my timestamp math here; it's probably not perfect */
-    guint64 desired_offset =
+    desired_offset =
         gst_util_uint64_scale_int_round (element->frame_number,
         fpsd * element->rate, fpsn);
     if (history_samples < desired_offset)
       desired_offset -= history_samples;
     else
       desired_offset = 0;
-    guint64 desired_offset_end =
+    desired_offset_end =
         gst_util_uint64_scale_int_round (element->frame_number,
         fpsd * element->rate, fpsn);
-    guint64 desired_samples = desired_offset_end - desired_offset;
-    guint64 desired_bytes = desired_samples * stride_bytes;
+    desired_samples = desired_offset_end - desired_offset;
+    desired_bytes = desired_samples * stride_bytes;
 
     GST_INFO_OBJECT (element,
         "we want offsets %" G_GUINT64_FORMAT " through %" G_GUINT64_FORMAT,
         desired_offset, desired_offset_end);
 
     if (element->last_offset_end < desired_offset) {
+      guint flush_bytes;
       guint flush_samples = desired_offset - element->last_offset_end;
       if (flush_samples > available_samples)
         flush_samples = available_samples;
-      guint flush_bytes = flush_samples * stride_bytes;
+      flush_bytes = flush_samples * stride_bytes;
       gst_adapter_flush (element->adapter, flush_bytes);
       available_samples -= flush_samples;
       available_bytes -= flush_bytes;
@@ -183,7 +204,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
         gst_util_uint64_scale_round (desired_offset_end, GST_SECOND,
         element->rate) + element->t0 - GST_BUFFER_TIMESTAMP (outbuf);
 
-    guint npixels = desired_samples * element->nchannels;
+    npixels = desired_samples * element->nchannels;
     if (desired_samples > 0) {
       double *orig_data =
           (double *) gst_adapter_peek (element->adapter, desired_bytes);
@@ -234,35 +255,38 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
     cairo_identity_matrix (cr);
     cairo_reset_clip (cr);
     /* Draw timestamp. */
-    gchar *nanos_str = NULL;
-    gchar *secs_str = NULL;
-    GstClockTime ts =
+    nanos_str = NULL;
+    secs_str = NULL;
+    ts =
         GST_BUFFER_TIMESTAMP (outbuf) + GST_BUFFER_DURATION (outbuf);
     for (i = 0; i < 3; ts /= 1000, i++) {
       gchar frag[4];
+      gchar *new_str;
       g_snprintf (frag, sizeof (frag), "%03hu", (unsigned short) (ts % 1000));
-      gchar *new_str = g_strjoin (" ", frag, nanos_str, NULL);
+      new_str = g_strjoin (" ", frag, nanos_str, NULL);
       g_free (nanos_str);
       nanos_str = new_str;
     }
     for (; ts >= 1000; ts /= 1000) {
       gchar frag[4];
+      gchar *new_str;
       g_snprintf (frag, sizeof (frag), "%03hu", (unsigned short) (ts % 1000));
-      gchar *new_str = g_strjoin (" ", frag, secs_str, NULL);
+      new_str = g_strjoin (" ", frag, secs_str, NULL);
       g_free (secs_str);
       secs_str = new_str;
     }
     if (ts > 0) {
       gchar frag[4];
+      gchar *new_str;
       g_snprintf (frag, sizeof (frag), "%hu", (unsigned short) (ts % 1000));
-      gchar *new_str = g_strjoin (" ", frag, secs_str, NULL);
+      new_str = g_strjoin (" ", frag, secs_str, NULL);
       g_free (secs_str);
       secs_str = new_str;
     }
-    gchar *ts_str = g_strdup_printf ("+ %s.%s", secs_str, nanos_str);
+    ts_str = g_strdup_printf ("+ %s.%s", secs_str, nanos_str);
     g_free (nanos_str);
     g_free (secs_str);
-    cairo_text_extents_t extents;
+    
     cairo_text_extents (cr, ts_str, &extents);
     cairo_move_to (cr, axes_width - extents.width - 36, axes_height - 18);
     cairo_show_text (cr, ts_str);
@@ -271,10 +295,13 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
 
     /* Draw pixels */
     if (data) {
-      GST_INFO_OBJECT (element, "painting pixels for frame %" G_GUINT64_FORMAT,
-          element->frame_number);
+      cairo_surface_t *pixsurf;
       guint32 *pixdata = g_malloc (npixels * sizeof (guint32));
       double invzspan = 1.0 / (zmax - zmin);
+
+      GST_INFO_OBJECT (element, "painting pixels for frame %" G_GUINT64_FORMAT,
+          element->frame_number);
+      
       for (i = 0; i < npixels; i++) {
         double x = data[i];
         if (x < zmin)
@@ -285,7 +312,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
           x = (x - zmin) * invzspan;
         pixdata[i] = colormap_map (element->map, x);
       }
-      cairo_surface_t *pixsurf =
+      pixsurf =
           cairo_image_surface_create_for_data ((unsigned char *) pixdata,
           CAIRO_FORMAT_RGB24, element->nchannels, desired_samples,
           element->nchannels * 4);
@@ -629,11 +656,16 @@ cairovis_waterfall_get_type (void)
 
   if (!type) {
     static const GTypeInfo info = {
-      .class_size = sizeof (CairoVisWaterfallClass),
-      .class_init = class_init,
-      .base_init = base_init,
-      .instance_size = sizeof (CairoVisWaterfall),
-      .instance_init = instance_init,
+      sizeof (CairoVisWaterfallClass),
+      base_init,
+      NULL,
+      class_init,
+      NULL,
+      NULL,
+      sizeof (CairoVisWaterfall),
+      0,
+      instance_init,
+      NULL
     };
     type =
         g_type_register_static (CAIROVIS_BASE_TYPE, "cairovis_waterfall", &info,
