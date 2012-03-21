@@ -295,6 +295,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
           x = (x - zmin) * invzspan;
         pixdata[i] = colormap_map (element->map, x);
       }
+      GST_INFO_OBJECT (element, "creating image surface %dx%" G_GUINT64_FORMAT " pixels", element->nchannels, desired_samples);
       cairo_surface_t *pixsurf =
           cairo_image_surface_create_for_data ((unsigned char *) pixdata,
           CAIRO_FORMAT_RGB24, element->nchannels, desired_samples,
@@ -337,6 +338,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
           for (j = 0; j < colorbar_width; j ++)
             pixdata[i * colorbar_width + j] = x;
         }
+        GST_INFO_OBJECT (element, "creating image surface %dx%d pixels", colorbar_width, colorbar_height);
         pixsurf = cairo_image_surface_create_for_data ((unsigned char *) pixdata, CAIRO_FORMAT_RGB24, colorbar_width, colorbar_height, cairo_format_stride_for_width (CAIRO_FORMAT_RGB24, colorbar_width));
         stat = cairo_surface_status (pixsurf);
         if (G_UNLIKELY (stat != CAIRO_STATUS_SUCCESS))
