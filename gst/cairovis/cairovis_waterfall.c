@@ -288,7 +288,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
       cairo_surface_t *pixsurf =
           cairo_image_surface_create_for_data ((unsigned char *) pixdata,
           CAIRO_FORMAT_RGB24, element->nchannels, desired_samples,
-          element->nchannels * 4);
+          cairo_format_stride_for_width (CAIRO_FORMAT_RGB24, element->nchannels));
       cairo_translate (cr, -1e-9 * GST_BUFFER_DURATION (outbuf), 0);
       cairo_rotate (cr, M_PI_2);
       cairo_scale (cr, 1.0, -1.0 / element->rate);
