@@ -294,27 +294,49 @@ GstFlowReturn cairovis_base_buffer_surface_alloc (CairoVisBase *element, GstBuff
 {
   GstFlowReturn result;
   GstPad *srcpad = element->srcpad;
+  cairo_status_t stat;
+  GstBuffer *out_buf;
+  cairo_surface_t *out_surf;
+  gint out_width, out_height;
 
   if (G_UNLIKELY (!cairovis_base_negotiate_srcpad (element)))
     return GST_FLOW_NOT_NEGOTIATED;
 
   /* Determine width and height of destination */
-  if (G_UNLIKELY (!gst_video_get_size (srcpad, width, height)))
+  if (G_UNLIKELY (!gst_video_get_size (srcpad, &out_width, &out_height)))
     return GST_FLOW_ERROR;
 
   /* Determine width and height of destination */
   result = gst_pad_alloc_buffer_and_set_caps (srcpad,
-    GST_BUFFER_OFFSET_NONE, 4 * (*width) * (*height),
-    GST_PAD_CAPS (srcpad), buf);
+    GST_BUFFER_OFFSET_NONE, 4 * out_width * out_height,
+    GST_PAD_CAPS (srcpad), &out_buf);
 
   if (G_UNLIKELY (result != GST_FLOW_OK))
+  {
     GST_WARNING_OBJECT (element, "Failed to alloc buffer: %s",
       gst_flow_get_name (result));
+    return result;
+  }
 
-  *surf = cairo_image_surface_create_for_data(
-    GST_BUFFER_DATA (*buf),
+  /* Attempt to create image surface */
+  out_surf = cairo_image_surface_create_for_data(
+    GST_BUFFER_DATA (out_buf),
     CAIRO_FORMAT_RGB24,
-    *width, *height, (*width) * 4);
+    out_width, out_height, out_width * 4);
+
+  stat = cairo_surface_status (out_surf);
+  if (G_UNLIKELY (stat != CAIRO_STATUS_SUCCESS))
+  {
+    GST_WARNING_OBJECT (element, "Failed to create image surface: %s",
+      cairo_status_to_string (stat));
+    gst_buffer_unref (out_buf);
+    return GST_FLOW_ERROR;
+  }
+
+  *buf = out_buf;
+  *surf = out_surf;
+  *width = out_width;
+  *height = out_height;
 
   return result;
 }

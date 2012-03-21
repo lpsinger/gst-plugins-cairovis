@@ -54,6 +54,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
   gint width, height;
   gint axes_width, axes_height;
   cairo_surface_t *surf;
+  cairo_status_t stat;
   cairo_t *cr;
   double *data;
   guint i, j;
@@ -171,6 +172,15 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
     }
 
     cr = cairo_create (surf);
+    stat = cairo_status (cr);
+    if (G_UNLIKELY (stat != CAIRO_STATUS_SUCCESS))
+    {
+      GST_ERROR_OBJECT (element, "cairo_create: %s", cairo_status_to_string (stat));
+      cairo_destroy (cr);
+      cairo_surface_destroy (surf);
+      result = GST_FLOW_ERROR;
+      goto done;
+    }
 
     /* Copy buffer flags and timestamps */
     gst_buffer_copy_metadata (outbuf, inbuf, GST_BUFFER_COPY_FLAGS);
@@ -289,6 +299,19 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
           cairo_image_surface_create_for_data ((unsigned char *) pixdata,
           CAIRO_FORMAT_RGB24, element->nchannels, desired_samples,
           cairo_format_stride_for_width (CAIRO_FORMAT_RGB24, element->nchannels));
+      stat = cairo_surface_status (pixsurf);
+      if (G_UNLIKELY (stat != CAIRO_STATUS_SUCCESS))
+      {
+        GST_ERROR_OBJECT (element, "cairo_image_surface_create_for_data: %s", cairo_status_to_string (stat));
+        if (zlog)
+          g_free (data);
+        g_free (pixdata);
+        cairo_surface_destroy (pixsurf);
+        cairo_destroy (cr);
+        cairo_surface_destroy (surf);
+        result = GST_FLOW_ERROR;
+        goto done;
+      }
       cairo_translate (cr, -1e-9 * GST_BUFFER_DURATION (outbuf), 0);
       cairo_rotate (cr, M_PI_2);
       cairo_scale (cr, 1.0, -1.0 / element->rate);
@@ -315,6 +338,19 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
             pixdata[i * colorbar_width + j] = x;
         }
         pixsurf = cairo_image_surface_create_for_data ((unsigned char *) pixdata, CAIRO_FORMAT_RGB24, colorbar_width, colorbar_height, cairo_format_stride_for_width (CAIRO_FORMAT_RGB24, colorbar_width));
+        stat = cairo_surface_status (pixsurf);
+        if (G_UNLIKELY (stat != CAIRO_STATUS_SUCCESS))
+        {
+          GST_ERROR_OBJECT (element, "cairo_image_surface_create_for_data: %s", cairo_status_to_string (stat));
+          if (zlog)
+            g_free (data);
+          g_free (pixdata);
+          cairo_surface_destroy (pixsurf);
+          cairo_destroy (cr);
+          cairo_surface_destroy (surf);
+          result = GST_FLOW_ERROR;
+          goto done;
+        }
         struct cairovis_axis_spec zspec = {element->zscale, CAIROVIS_WEST, colorbar_height, zmin, zmax};
         cairo_identity_matrix (cr);
         cairo_reset_clip (cr);
