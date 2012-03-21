@@ -90,6 +90,7 @@ chain (GstPad * pad, GstBuffer * inbuf)
   gint width, height;
   cairo_surface_t *surf;
   cairo_t *cr;
+  cairo_status_t stat;
   double *bin_heights, *bin_edges;
   guint i;
   double last_x;
@@ -134,6 +135,15 @@ chain (GstPad * pad, GstBuffer * inbuf)
     goto done;
 
   cr = cairo_create (surf);
+  stat = cairo_status (cr);
+  if (G_UNLIKELY (stat != CAIRO_STATUS_SUCCESS))
+  {
+    GST_ERROR_OBJECT (element, "cairo_create: %s", cairo_status_to_string (stat));
+    cairo_destroy (cr);
+    cairo_surface_destroy (surf);
+    result = GST_FLOW_ERROR;
+    goto done;
+  }
 
   bin_heights = g_malloc (sizeof (double) * element->nbins);
   bin_edges = g_malloc (sizeof (double) * (element->nbins + 1));
