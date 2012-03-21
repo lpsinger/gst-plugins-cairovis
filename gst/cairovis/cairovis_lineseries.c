@@ -46,6 +46,7 @@ chain (GstPad * pad, GstBuffer * inbuf)
   gint width, height;
   cairo_surface_t *surf;
   cairo_t *cr;
+  cairo_status_t stat;
 
   gboolean xlog = base->xscale;
   gboolean ylog = base->yscale;
@@ -58,6 +59,15 @@ chain (GstPad * pad, GstBuffer * inbuf)
     goto done;
 
   cr = cairo_create (surf);
+  stat = cairo_status (cr);
+  if (G_UNLIKELY (stat != CAIRO_STATUS_SUCCESS))
+  {
+    GST_ERROR_OBJECT (element, "cairo_create: %s", cairo_status_to_string (stat));
+    cairo_destroy (cr);
+    cairo_surface_destroy (surf);
+    result = GST_FLOW_ERROR;
+    goto done;
+  }
 
   /* Determine number of samples, data pointer */
   const double *data = (const double *) GST_BUFFER_DATA (inbuf);
