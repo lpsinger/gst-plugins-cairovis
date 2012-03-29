@@ -313,6 +313,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
         result = GST_FLOW_ERROR;
         goto done;
       }
+      cairo_save (cr);
       cairo_translate (cr, -1e-9 * GST_BUFFER_DURATION (outbuf), 0);
       cairo_rotate (cr, M_PI_2);
       cairo_scale (cr, 1.0, -1.0 / element->rate);
@@ -320,6 +321,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
       cairo_paint (cr);
       cairo_surface_destroy (pixsurf);
       g_free (pixdata);
+      cairo_restore (cr);
 
       /* Draw colorbar if necessary */
       if (element->colorbar)
@@ -327,7 +329,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
         GST_INFO_OBJECT (element, "painting colorbar");
 
         /* Determine device space coordinates of axes corners */
-        double axes_left = -1., axes_right = 1., axes_bottom = -1., axes_top = 1.;
+        double axes_left = base->xmin, axes_right = base->xmax, axes_bottom = base->ymin, axes_top = base->ymax;
         cairo_user_to_device (cr, &axes_left, &axes_bottom);
         cairo_user_to_device (cr, &axes_right, &axes_top);
 
@@ -357,7 +359,7 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
         cairo_identity_matrix (cr);
         cairo_reset_clip (cr);
         cairo_set_source_rgb (cr, 1, 1, 1);
-        cairo_translate (cr, axes_width, 0.5 * (height + axes_bottom - axes_top));
+        cairo_translate (cr, axes_width, axes_bottom);
         cairovis_draw_axis (cr, &zspec);
         cairo_scale (cr, 1., -1.);
         cairo_rectangle (cr, 0., 0., colorbar_width, colorbar_height);
