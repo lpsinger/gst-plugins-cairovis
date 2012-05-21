@@ -213,10 +213,17 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
       base->xmax = 0;
     }
 
+    /* Determine y-axis data limits */
+    if (element->ydataautoscale)
+    {
+      element->ydatamin = 0;
+      element->ydatamax = element->nchannels;
+    }
+
     /* Determine y-axis limits */
     if (base->yautoscale) {
-      base->ymin = 0;
-      base->ymax = element->nchannels;
+      base->ymin = element->ydatamin;
+      base->ymax = element->ydatamax;
     }
 
     /* Determine z-axis limits */
@@ -314,9 +321,9 @@ sink_chain (GstPad * pad, GstBuffer * inbuf)
         goto done;
       }
       cairo_save (cr);
-      cairo_translate (cr, -1e-9 * GST_BUFFER_DURATION (outbuf), 0);
+      cairo_translate (cr, -1e-9 * GST_BUFFER_DURATION (outbuf), element->ydatamin);
       cairo_rotate (cr, M_PI_2);
-      cairo_scale (cr, 1.0, -1.0 / element->rate);
+      cairo_scale (cr, (element->ydatamax - element->ydatamin) / element->nchannels, -1.0 / element->rate);
       cairo_set_source_surface (cr, pixsurf, 0, 0);
       cairo_paint (cr);
       cairo_surface_destroy (pixsurf);
@@ -421,7 +428,10 @@ done:
 
 enum property
 {
-  PROP_ZLABEL = 1,
+  PROP_YDATAAUTOSCALE = 1,
+  PROP_YDATAMIN,
+  PROP_YDATAMAX,
+  PROP_ZLABEL,
   PROP_ZSCALE,
   PROP_ZAUTOSCALE,
   PROP_ZMIN,
@@ -441,6 +451,15 @@ set_property (GObject * object, enum property id, const GValue * value,
   GST_OBJECT_LOCK (element);
 
   switch (id) {
+    case PROP_YDATAAUTOSCALE:
+      element->ydataautoscale = g_value_get_boolean (value);
+      break;
+    case PROP_YDATAMIN:
+      element->ydatamin = g_value_get_double (value);
+      break;
+    case PROP_YDATAMAX:
+      element->ydatamax = g_value_get_double (value);
+      break;
     case PROP_ZLABEL:
       g_free (element->zlabel);
       element->zlabel = g_value_dup_string (value);
@@ -489,6 +508,15 @@ get_property (GObject * object, enum property id, GValue * value,
   GST_OBJECT_LOCK (element);
 
   switch (id) {
+    case PROP_YDATAAUTOSCALE:
+      g_value_set_boolean (value, element->ydataautoscale);
+      break;
+    case PROP_YDATAMIN:
+      g_value_set_double (value, element->ydatamin);
+      break;
+    case PROP_YDATAMAX:
+      g_value_set_double (value, element->ydatamax);
+      break;
     case PROP_ZLABEL:
       g_value_set_string (value, element->zlabel);
       break;
@@ -571,6 +599,29 @@ class_init (gpointer class, gpointer class_data)
   gobject_class->set_property = GST_DEBUG_FUNCPTR (set_property);
   gobject_class->finalize = GST_DEBUG_FUNCPTR (finalize);
 
+  g_object_class_install_property (gobject_class,
+      PROP_YDATAAUTOSCALE,
+      g_param_spec_boolean ("y-data-autoscale",
+          "y-data Autoscale",
+          "If set to true, interpret channel index as the y-axis value. If set to false, interpret the first channel as y=y-data-min and the last channel as y=y-data-max.",
+          TRUE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT)
+      );
+  g_object_class_install_property (gobject_class,
+      PROP_YDATAMIN,
+      g_param_spec_double ("y-data-min",
+          "y-data Minimum",
+          "y-value corresponding to channel 0 (has no effect if y-data-autoscale is set to true)",
+          -G_MAXDOUBLE, G_MAXDOUBLE, -2.0,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT)
+      );
+  g_object_class_install_property (gobject_class,
+      PROP_YDATAMAX,
+      g_param_spec_double ("y-data-max",
+          "y-data Maximum",
+          "y-value corresponding to last channel (if there are N channels from 0 to N-1, then channel N has the y-value y=y-data-max; has no effect if y-data-autoscale is set to true)",
+          -G_MAXDOUBLE, G_MAXDOUBLE, 2.0,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT)
+      );
   g_object_class_install_property (gobject_class,
       PROP_ZLABEL,
       g_param_spec_string ("z-label",
