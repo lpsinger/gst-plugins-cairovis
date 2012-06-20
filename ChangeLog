@@ -1,6 +1,9 @@
+=== release 0.1.1 ===
+
 2012-06-20  Leo Singer  <leo.singer@ligo.org>
 
     * Removed restrict keyword to make C source files C89 compliant.
+    * Released version 0.1.1.
 
 === release 0.1.0 ===
 
