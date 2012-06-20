@@ -1,8 +1,3 @@
-2011-04-14  Leo Singer  <leo.singer.ligo.org>
-
-	* Finished move from gstlal
-	  <https://www.lsc-group.phys.uwm.edu/daswg/projects/gstlal.html>
-
 2012-06-12  Leo Singer  <leo.singer.ligo.org>
 
 	* Released version 0.1.0.
@@ -10,3 +5,8 @@
 	* cairovis_waterfall has new y-data-min, y-data-max, and y-data-autoscale
 	  properties to control the transformation from channel number to data
 	  space.
+
+2011-04-14  Leo Singer  <leo.singer.ligo.org>
+
+	* Finished move from gstlal
+	  <https://www.lsc-group.phys.uwm.edu/daswg/projects/gstlal.html>
