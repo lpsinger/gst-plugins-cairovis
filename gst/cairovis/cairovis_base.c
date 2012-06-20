@@ -71,7 +71,7 @@ static void draw_minor_tick (cairo_t *cr, double x)
 }
 
 
-void cairovis_draw_axis (cairo_t *restrict cr, const struct cairovis_axis_spec *restrict axis)
+void cairovis_draw_axis (cairo_t * cr, const struct cairovis_axis_spec * axis)
 {
   cairo_text_extents_t extents;
   int ntick, nmintick, nmaxtick, nsubtick;
