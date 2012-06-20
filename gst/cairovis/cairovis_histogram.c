@@ -40,7 +40,7 @@ cairovis_histogram_bins_get_type (void)
 
 
 static void
-increment_bin (CairoVisHistogram * element, double x, gchar value)
+increment_bin (CairoVisHistogram *element, double x, gchar value)
 {
   switch (element->bins) {
     case CAIROVIS_BINS_LINEAR:
@@ -60,7 +60,7 @@ increment_bin (CairoVisHistogram * element, double x, gchar value)
 
 
 static void
-increment_bin_from_ptr (CairoVisHistogram * element, const double *ptr,
+increment_bin_from_ptr (CairoVisHistogram *element, const double *ptr,
     const double *end, gchar value)
 {
   for (; ptr < end; ptr++)
@@ -69,7 +69,7 @@ increment_bin_from_ptr (CairoVisHistogram * element, const double *ptr,
 
 
 static void
-increment_bin_from_buf (CairoVisHistogram * element, GstBuffer * buf,
+increment_bin_from_buf (CairoVisHistogram *element, GstBuffer *buf,
     gchar value)
 {
   const double *ptr = (const double *) GST_BUFFER_DATA (buf);
@@ -310,8 +310,8 @@ enum property
 
 
 static void
-set_property (GObject * object, enum property id, const GValue * value,
-    GParamSpec * pspec)
+set_property (GObject *object, enum property id, const GValue *value,
+    GParamSpec *pspec)
 {
   CairoVisHistogram *element = CAIROVIS_HISTOGRAM (object);
 
@@ -446,7 +446,7 @@ class_init (gpointer class, gpointer class_data)
 
 
 static void
-instance_init (GTypeInstance * object, gpointer class)
+instance_init (GTypeInstance *object, gpointer class)
 {
   CairoVisHistogram *element = CAIROVIS_HISTOGRAM (object);
   GstPadTemplate *tmpl =

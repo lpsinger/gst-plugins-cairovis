@@ -23,7 +23,7 @@
 
 
 static gboolean
-sink_setcaps (GstPad * pad, GstCaps * caps)
+sink_setcaps (GstPad *pad, GstCaps *caps)
 {
   CairoVisLineSeries *element = CAIROVIS_LINESERIES (gst_pad_get_parent (pad));
   GstStructure *structure = gst_caps_get_structure (caps, 0);
@@ -37,7 +37,7 @@ sink_setcaps (GstPad * pad, GstCaps * caps)
 
 
 static GstFlowReturn
-chain (GstPad * pad, GstBuffer * inbuf)
+chain (GstPad *pad, GstBuffer *inbuf)
 {
   CairoVisLineSeries *element = CAIROVIS_LINESERIES (gst_pad_get_parent (pad));
   CairoVisBase *base = CAIROVIS_BASE (element);
@@ -161,7 +161,7 @@ static GstElementClass *parent_class = NULL;
 
 
 static void
-finalize (GObject * object)
+finalize (GObject *object)
 {
   CairoVisLineSeries *element = CAIROVIS_LINESERIES (object);
 
@@ -206,7 +206,7 @@ class_init (gpointer class, gpointer class_data)
 
 
 static void
-instance_init (GTypeInstance * object, gpointer class)
+instance_init (GTypeInstance *object, gpointer class)
 {
   CairoVisLineSeries *element = CAIROVIS_LINESERIES (object);
   GstPadTemplate *tmpl =

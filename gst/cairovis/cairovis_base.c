@@ -71,7 +71,7 @@ static void draw_minor_tick (cairo_t *cr, double x)
 }
 
 
-void cairovis_draw_axis (cairo_t * cr, const struct cairovis_axis_spec * axis)
+void cairovis_draw_axis (cairo_t *cr, const struct cairovis_axis_spec *axis)
 {
   cairo_text_extents_t extents;
   int ntick, nmintick, nmaxtick, nsubtick;
@@ -458,7 +458,7 @@ enum property
 };
 
 
-static void set_property (GObject * object, enum property id, const GValue * value, GParamSpec * pspec)
+static void set_property (GObject *object, enum property id, const GValue *value, GParamSpec *pspec)
 {
   CairoVisBase *element = CAIROVIS_BASE (object);
 

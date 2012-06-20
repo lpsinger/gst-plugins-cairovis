@@ -29,7 +29,7 @@ GST_DEBUG_CATEGORY_STATIC (GST_CAT_DEFAULT);
 
 
 static gboolean
-sink_setcaps (GstPad * pad, GstCaps * caps)
+sink_setcaps (GstPad *pad, GstCaps *caps)
 {
   CairoVisWaterfall *element = CAIROVIS_WATERFALL (gst_pad_get_parent (pad));
   GstStructure *structure = gst_caps_get_structure (caps, 0);
@@ -45,7 +45,7 @@ sink_setcaps (GstPad * pad, GstCaps * caps)
 
 
 static GstFlowReturn
-sink_chain (GstPad * pad, GstBuffer * inbuf)
+sink_chain (GstPad *pad, GstBuffer *inbuf)
 {
   CairoVisWaterfall *element = CAIROVIS_WATERFALL (gst_pad_get_parent (pad));
   CairoVisBase *base = CAIROVIS_BASE (element);
@@ -443,8 +443,8 @@ enum property
 
 
 static void
-set_property (GObject * object, enum property id, const GValue * value,
-    GParamSpec * pspec)
+set_property (GObject *object, enum property id, const GValue *value,
+    GParamSpec *pspec)
 {
   CairoVisWaterfall *element = CAIROVIS_WATERFALL (object);
 
@@ -500,8 +500,8 @@ set_property (GObject * object, enum property id, const GValue * value,
 
 
 static void
-get_property (GObject * object, enum property id, GValue * value,
-    GParamSpec * pspec)
+get_property (GObject *object, enum property id, GValue *value,
+    GParamSpec *pspec)
 {
   CairoVisWaterfall *element = CAIROVIS_WATERFALL (object);
 
@@ -551,7 +551,7 @@ static GstElementClass *parent_class = NULL;
 
 
 static void
-finalize (GObject * object)
+finalize (GObject *object)
 {
   CairoVisWaterfall *element = CAIROVIS_WATERFALL (object);
 

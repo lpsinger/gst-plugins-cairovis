@@ -87,12 +87,12 @@ typedef struct _CairoVisBase
 } CairoVisBase;
 
 
-gboolean cairovis_base_negotiate_srcpad (CairoVisBase * element);
-GstFlowReturn cairovis_base_buffer_surface_alloc (CairoVisBase * element,
-    GstBuffer ** buf, cairo_surface_t ** surf, gint * width, gint * height);
-void cairovis_draw_axis (cairo_t * cr,
-    const struct cairovis_axis_spec * axis);
-void cairovis_draw_axes (CairoVisBase * element, cairo_t * cr, gint width,
+gboolean cairovis_base_negotiate_srcpad (CairoVisBase *element);
+GstFlowReturn cairovis_base_buffer_surface_alloc (CairoVisBase *element,
+    GstBuffer **buf, cairo_surface_t **surf, gint *width, gint *height);
+void cairovis_draw_axis (cairo_t *cr,
+    const struct cairovis_axis_spec *axis);
+void cairovis_draw_axes (CairoVisBase *element, cairo_t *cr, gint width,
     gint height);
 
 
