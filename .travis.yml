@@ -6,4 +6,4 @@ before_script:
  - sudo apt-get -qq update
  - sudo apt-get -qq install libgstreamer0.10-dev libgstreamer-plugins-base0.10-dev libgsl0-dev libcairo2-dev
  - ./autogen.sh
-script: ./configure && make
+script: make
